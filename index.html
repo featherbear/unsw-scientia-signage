@@ -24,11 +24,15 @@
         this.host = host;
         this.credentials = credentials;
 
-        this.data = {};
+        this._data = {};
       }
 
       updateData(data) {
-        this.data = { ...this.data, ...data };
+        this._data = { ...this._data, ...data };
+      }
+
+      get data() {
+        return { ...this._data };
       }
 
       get baseURL() {
