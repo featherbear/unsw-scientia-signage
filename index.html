@@ -110,6 +110,64 @@
           throw new Errors.NotJSON();
         }
       }
+
+      async uploadFile(file) {
+        if (typeof file === "undefined") throw Error("Provide a file");
+
+        let data = new FormData();
+        data.append("files", file, file.name);
+
+        let response;
+        try {
+          response = await fetch(this.apiURL + "files", {
+            ...this.defaultFetchParams,
+            method: "post",
+            body: data,
+          });
+        } catch (e) {
+          console.log(e);
+          throw new Errors.DeviceOffline();
+        }
+
+        if (response.status == 401) throw new Errors.AuthenticationError();
+
+        try {
+          return await response.json();
+        } catch {
+          throw new Errors.NotJSON();
+        }
+      }
+
+      async setSingle(filename) {
+        var playlistResponse = await this.get("playlists/single");
+        if (playlistResponse.success === false) {
+          await this.post("playlists", {
+            file: "single",
+          });
+        }
+
+        // set the `single` playlist
+        return await this.post("playlists/single", {
+          assets: [
+            {
+              duration: 10,
+              filename: filename,
+              fullscreen: true,
+              selected: true,
+            },
+          ],
+        });
+      }
+
+      async playSingle() {
+        return this.post("play/playlists/single", { play: true });
+      }
+
+      async stopPlaying() {
+        return this.post(`play/playlists/${this.data.currentPlaylist}`, {
+          stop: true,
+        });
+      }
     }
   </script>
 
@@ -392,6 +450,15 @@
       background-color: #ca5858;
     }
 
+    .device .controlContainer .btnUpload {
+      color: white;
+      background-color: #358ff5;
+    }
+
+    .device .controlContainer .btnUpload:hover {
+      background-color: #2f83e2;
+    }
+
     .device .controlContainer .btnManage {
       color: grey;
       transition: color 0.1s;
@@ -416,6 +483,23 @@
       let element = document.createElement("div");
       element.className = "device";
       element.classList.add("offline");
+
+      let uploader = document.createElement("input");
+      uploader.type = "file";
+      uploader.click();
+      uploader.style.display = "none";
+      uploader.addEventListener("change", async () => {
+        if (uploader.files) {
+          let file = uploader.files[0];
+          await device.uploadFile(file);
+          await device.setSingle(file.name);
+          await device.stopPlaying();
+          device.updateData({ _last_currentPlaylist: null });
+          await device.playSingle();
+          element.forceUpdate();
+        }
+      });
+      element.appendChild(uploader);
 
       var title = document.createElement("span");
       title.className = "title";
@@ -468,6 +552,11 @@
                 elem.innerText = " - Wait...";
                 // document.querySelector(`.btn${controlData.name}`)
               },
+            },
+            {
+              name: "Upload",
+              text: "Upload & Show",
+              click: () => element.querySelector("input[type=file]").click(),
             },
             {
               name: "Manage",
