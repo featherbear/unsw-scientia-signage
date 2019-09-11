@@ -361,13 +361,13 @@
       content: "Status: ";
     }
 
-    .device.offline .playing {
+    .device.offline .playlist {
       display: none;
     }
 
-    .device .playing:before {
+    .device .playlist:before {
       color: initial;
-      content: "Playing: ";
+      content: "Playlist: ";
     }
 
     .device .container {
@@ -396,8 +396,8 @@
     }
 
     .device .previewContainer img {
-      width: 90%;
-      height: auto;
+      max-width: 220px;
+      max-height: 130px;
       margin: 0 auto;
     }
 
@@ -515,10 +515,10 @@
       status.innerText = "Connecting...";
       container.appendChild(status);
 
-      var playing = document.createElement("span");
-      playing.className = "playing";
-      playing.innerText = "";
-      container.appendChild(playing);
+      var playlist = document.createElement("span");
+      playlist.className = "playlist";
+      playlist.innerText = "";
+      container.appendChild(playlist);
 
       {
         var previewContainer = document.createElement("div");
@@ -585,37 +585,36 @@
       }
       let fetchCurrentMedia = async device => {
         // if (device.data.currentPlayingFile)
-        if (device.data.currentPlaylist) {
-          let playlistFiles = (await device.get(
-            `playlists/${device.data.currentPlaylist}`
-          ))["data"]["assets"];
+        if (device.data["playlistOn"]) {
+          if (
+            device.data._last_currentPlaylist != device.data.currentPlaylist
+          ) {
+            device.updateData({
+              _last_currentPlaylist: device.data.currentPlaylist,
+            });
+            let playlistFiles = (await device.get(
+              `playlists/${device.data.currentPlaylist}`
+            ))["data"]["assets"];
 
-          // console.log(playlistFiles);
-          let filename = playlistFiles[0]["filename"];
+            let filename = playlistFiles[0]["filename"];
 
-          let file = await device.get(`files/${filename}`);
-          let fileContent = await device.getMedia(filename);
-          preview.setAttribute("src", URL.createObjectURL(fileContent));
+            let file = await device.get(`files/${filename}`);
+            let fileContent = await device.getMedia(filename);
+            preview.setAttribute("src", URL.createObjectURL(fileContent));
+          }
         }
-
-        setTimeout(() => fetchCurrentMedia(device), 10000);
       };
 
-      let chainLoop;
-      (chainLoop = (successCallback, errorCallback, runOnce) => {
-        device
+      let statusLoop;
+      (statusLoop = loopCallback => {
+        return device
           .get("status")
           .then(json => {
             let data = json["data"];
-            if (!window.aaa) window.aaa = 0;
-            if (window.aaa < 4) {
-              console.log(data);
-              window.aaa++;
-            }
 
             device.updateData(data);
 
-            if (data.playlistOn) {
+            if (data["playlistOn"]) {
               if (!element.classList.contains("running")) {
                 element.classList.add("running");
                 status.innerText = "Running";
@@ -629,8 +628,8 @@
             element.querySelector(".controlContainer .btnToggle").innerText =
               "";
 
-            playing.innerText !== data["currentPlaylist"] &&
-              (playing.innerText = data["currentPlaylist"]);
+            playlist.innerText !== data["currentPlaylist"] &&
+              (playlist.innerText = data["currentPlaylist"]);
 
             // data["currentPlayingFile"] // doesn't appear on v1.7.2/ps3_8.0_admin_2016-08-16
 
@@ -639,7 +638,7 @@
             element.classList.contains("error") &&
               element.classList.remove("error");
 
-            successCallback && successCallback(device);
+            fetchCurrentMedia(device);
           })
           .catch(err => {
             status.innerText = err.message;
@@ -648,15 +647,13 @@
             } else {
               element.classList.add("error");
             }
-
-            errorCallback && errorCallback(device, err);
           })
           .finally(() => {
-            setTimeout(() => chainLoop(successCallback, errorCallback), 5000);
-            runOnce && runOnce(device);
+            loopCallback && setTimeout(() => loopCallback(loopCallback), 5000);
           });
-      })(undefined, undefined, fetchCurrentMedia);
+      })(statusLoop);
 
+      element.forceUpdate = statusLoop;
       return element;
     }
 
@@ -664,7 +661,5 @@
     for (let device of devices) {
       body.appendChild(createDeviceElement(device));
     }
-
-    // /play/playlists/{playlist} :: playlistStart / playlistStop
   </script>
 </html>
