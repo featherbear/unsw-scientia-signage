@@ -35,8 +35,12 @@
         return { ...this._data };
       }
 
-      get baseURL() {
-        return `http://${this.host}/api/`;
+      get _baseURL() {
+        return `http://${this.host}`;
+      }
+
+      get apiURL() {
+        return this._baseURL + "/api/";
       }
 
       get defaultFetchParams() {
@@ -50,10 +54,12 @@
       }
 
       async get(endpoint = "") {
+        if (typeof endpoint === "undefined") throw Error("Provide an endpoint");
+
         let response;
         try {
           response = await fetch(
-            this.baseURL + endpoint,
+            this.apiURL + endpoint,
             this.defaultFetchParams
           );
         } catch {
@@ -69,15 +75,30 @@
         }
       }
 
-      async post(endPoint = "", data = {}) {
+      async getMedia(filename) {
+        if (typeof filename === "undefined") throw Error("Provide a filename");
+
+        return fetch(
+          `${this._baseURL}/media/` + filename,
+          this.defaultFetchParams
+        ).then(r => r.blob());
+      }
+
+      async post(endpoint = "", data = {}) {
+        if (typeof endpoint === "undefined") throw Error("Provide an endpoint");
+
         let response;
         try {
-          response = await fetch(this.baseURL + endpoint, {
+          let opts = {
             ...this.defaultFetchParams,
             method: "post",
-            data,
-          });
-        } catch {
+            body: JSON.stringify(data),
+          };
+          opts.headers["Content-Type"] = "application/json";
+
+          response = await fetch(this.apiURL + endpoint, opts);
+        } catch (e) {
+          console.log(e);
           throw new Errors.DeviceOffline();
         }
 
@@ -171,6 +192,13 @@
         justify-content: space-between;
       }
 
+      @media screen and (max-width: 1280px) {
+        nav,
+        footer {
+          padding: 10px 15px;
+        }
+      }
+
       nav {
         border-top: 5px solid black;
         border-bottom: 1px solid rgba(0, 0, 0, 0.1);
@@ -180,17 +208,9 @@
         max-height: 80px;
         pointer-events: none;
       }
-
-      nav .divider {
-        color: red;
-        background-color: red;
-        width: 20px;
-
-        position: absolute;
-      }
-
       nav .title {
         font-size: 30px;
+        text-align: right;
       }
 
       footer {
@@ -226,7 +246,7 @@
       <img
         src="https://www.unsw.edu.au/sites/all/themes/mobileunswcorporate/logo.png"
       />
-      <span class="title">Scientia Pi Signage</span>
+      <span class="title">Scientia Signage</span>
     </nav>
 
     <div id="body">
@@ -260,7 +280,7 @@
       width: 250px;
       min-height: 200px;
 
-      cursor: pointer;
+      /* cursor: pointer; */
 
       transition: opacity 0.1s;
 
@@ -274,7 +294,8 @@
       padding-bottom: 5px;
       font-size: 18px;
     }
-    .device:not(.error):not(.offline) .status {
+
+    .device.running .status {
       color: green;
     }
     .device .status:before {
@@ -282,9 +303,98 @@
       content: "Status: ";
     }
 
+    .device .playing:before {
+      color: initial;
+      content: "Playing: ";
+    }
+
+    .device .container {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+    .device .container > *:not(:last-child) {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .device .previewContainer {
+      height: 160px;
+    }
+
+    .device:not(.running) .previewContainer {
+      display: none;
+    }
+
+    .device .previewText {
+      color: grey;
+      font-size: 12px;
+      text-align: left;
+      text-transform: uppercase;
+      padding: 5px 12px;
+    }
+
+    .device .previewContainer img {
+      width: 90%;
+      height: auto;
+      margin: 0 auto;
+    }
+
+    .device .controlContainer {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .device .controlContainer li {
+      cursor: pointer;
+      padding: 5px;
+    }
+
+    .device .controlContainer li:last-child {
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 8px;
+    }
+
+    .device .controlContainer li:hover {
+      background-color: #ddd;
+    }
+
+    .device .controlContainer .btnToggle {
+      color: white;
+    }
+
+    .device:not(.running) .controlContainer .btnToggle:before {
+      content: "Start";
+    }
+    .device:not(.running) .controlContainer .btnToggle {
+      background-color: #4fce4f;
+    }
+    .device:not(.running) .controlContainer .btnToggle:hover {
+      background-color: #39a739;
+    }
+
+    .device.running .controlContainer .btnToggle:before {
+      content: "Stop";
+    }
+    .device.running .controlContainer .btnToggle {
+      background-color: #e97272;
+    }
+    .device.running .controlContainer .btnToggle:hover {
+      background-color: #ca5858;
+    }
+
+    .device .controlContainer .btnManage {
+      color: grey;
+      transition: color 0.1s;
+    }
+
+    .device .controlContainer .btnManage:hover {
+      color: black;
+    }
+
     .device:hover {
       opacity: 1 !important;
-      background-color: #eee;
     }
     .device.offline {
       opacity: 0.5;
@@ -295,14 +405,18 @@
   </style>
   <script>
     function createDeviceElement(device /* SignageDevice */) {
-      let container = document.createElement("div");
-      container.className = "device";
-      container.classList.add("offline");
+      let element = document.createElement("div");
+      element.className = "device";
+      element.classList.add("offline");
 
       var title = document.createElement("span");
       title.className = "title";
       title.innerText = device.name;
-      container.appendChild(title);
+      element.appendChild(title);
+
+      let container = document.createElement("div");
+      container.className = "container";
+      element.appendChild(container);
 
       var status = document.createElement("span");
       status.className = "status";
@@ -314,39 +428,139 @@
       playing.innerText = "";
       container.appendChild(playing);
 
+      {
+        var previewContainer = document.createElement("div");
+        previewContainer.className = "previewContainer";
+        container.appendChild(previewContainer);
+
+        var previewText = document.createElement("div");
+        previewText.className = "previewText";
+        previewText.innerText = "Preview";
+        previewContainer.appendChild(previewText);
+
+        var preview = document.createElement("img");
+        preview.className = "preview";
+        previewContainer.appendChild(preview);
+      }
+
+      {
+        var controlContainer = document.createElement("ul");
+        controlContainer.className = "controlContainer";
+        element.appendChild(controlContainer);
+
+        {
+          let controls = [
+            {
+              name: "Toggle",
+              text: "", // Start / Stop
+              click: function(elem) {
+                device.post(`play/playlists/${device.data.currentPlaylist}`, {
+                  [device.data.playlistOn ? "stop" : "play"]: true,
+                });
+                elem.innerText = " - Wait...";
+                // document.querySelector(`.btn${controlData.name}`)
+              },
+            },
+            {
+              name: "Manage",
+              text: "Manage",
+              click: () =>
+                window.open(
+                  `http://${device.credentials.username}:${device.credentials.password}@${device.host}`,
+                  "_blank"
+                ),
+            },
+          ];
+
+          for (let controlData of controls) {
+            let control = document.createElement("li");
+            control.className = `btn${controlData.name}`;
+            control.innerText = controlData.text;
+            control.onclick = () => controlData.click(control);
+
+            controlData.textColour &&
+              (control.style.color = controlData.textColour);
+            controlData.backgroundColour &&
+              (control.style.backgroundColor = controlData.backgroundColour);
+            controlContainer.appendChild(control);
+          }
+        }
+      }
+      let fetchCurrentMedia = async device => {
+        // if (device.data.currentPlayingFile)
+        if (device.data.currentPlaylist) {
+          let playlistFiles = (await device.get(
+            `playlists/${device.data.currentPlaylist}`
+          ))["data"]["assets"];
+
+          // console.log(playlistFiles);
+          let filename = playlistFiles[0]["filename"];
+
+          let file = await device.get(`files/${filename}`);
+          let fileContent = await device.getMedia(filename);
+          preview.setAttribute("src", URL.createObjectURL(fileContent));
+        }
+
+        setTimeout(fetchCurrentMedia, 10000)
+      };
+
       let chainLoop;
-      (chainLoop = (successCallback, errorCallback) => {
+      (chainLoop = (successCallback, errorCallback, runOnce) => {
         device
           .get("status")
           .then(json => {
             let data = json["data"];
+            if (!window.aaa) window.aaa = 0;
+            if (window.aaa < 4) {
+              console.log(data);
+              window.aaa++;
+            }
+
             device.updateData(data);
-            status.innerText = "Running";
-            playing.innerText =
-              (data["currentPlayingFile"]
-                ? data["currentPlayingFile"] + " - "
-                : "") + data["currentPlaylist"];
-            container.classList.remove("offline");
-            container.classList.remove("error");
+
+            if (data.playlistOn) {
+              if (!element.classList.contains("running")) {
+                element.classList.add("running");
+                status.innerText = "Running";
+              }
+            } else {
+              if (element.classList.contains("running"))
+                element.classList.remove("running");
+              status.innerText !== "Online" && (status.innerText = "Online");
+            }
+
+            element.querySelector(".controlContainer .btnToggle").innerText =
+              "";
+
+            playing.innerText !== data["currentPlaylist"] &&
+              (playing.innerText = data["currentPlaylist"]);
+
+            // data["currentPlayingFile"] // doesn't appear on v1.7.2/ps3_8.0_admin_2016-08-16
+
+            element.classList.contains("offline") &&
+              element.classList.remove("offline");
+            element.classList.contains("error") &&
+              element.classList.remove("error");
 
             successCallback && successCallback(device);
           })
           .catch(err => {
             status.innerText = err.message;
             if (err instanceof Errors.DeviceOffline) {
-              container.classList.add("offline");
+              element.classList.add("offline");
             } else {
-              container.classList.add("error");
+              element.classList.add("error");
             }
 
             errorCallback && errorCallback(device, err);
           })
           .finally(() => {
             setTimeout(() => chainLoop(successCallback, errorCallback), 5000);
+            runOnce && runOnce(device);
           });
-      })();
+      })(undefined, undefined, fetchCurrentMedia);
 
-      return container;
+      return element;
     }
 
     let body = document.querySelector("#body .devices");
