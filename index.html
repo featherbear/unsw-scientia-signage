@@ -501,7 +501,7 @@
           preview.setAttribute("src", URL.createObjectURL(fileContent));
         }
 
-        setTimeout(fetchCurrentMedia, 10000)
+        setTimeout(() => fetchCurrentMedia(device), 10000);
       };
 
       let chainLoop;
