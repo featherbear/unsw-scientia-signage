@@ -89,11 +89,16 @@
   </script>
 
   <script>
-    for (let device of devices) {
-      device.instance = new SignageDevice(device.host, {
-        username: device.username,
-        password: device.password,
+    for (let i = 0; i < devices.length; i++) {
+      let deviceData = devices[i];
+
+      let device = new SignageDevice(deviceData.host, {
+        username: deviceData.username,
+        password: deviceData.password,
       });
+      device.name = deviceData.name;
+
+      devices[i] = device;
     }
 
     let Errors = {
@@ -306,11 +311,11 @@
 
       let chainLoop;
       (chainLoop = () => {
-        device.instance
+        device
           .get("status")
           .then(json => {
             let data = json["data"];
-            device.instance.updateData(data);
+            device.updateData(data);
             status.innerText = "Running";
             playing.innerText =
               (data["currentPlayingFile"]
