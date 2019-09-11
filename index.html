@@ -6,4 +6,81 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Scientia Pi Signage</title>
   </head>
+
+  <script>
+    class SignageDevice {
+      constructor(host, credentials) {
+        if (typeof host === "undefined")
+          throw new Error("Please provide a host");
+        if (typeof credentials === "undefined")
+          throw new Error(
+            "Please provide credentials {username: ..., password: ...}"
+          );
+
+        this.host = host;
+        this.credentials = credentials;
+
+        this.data = {};
+      }
+
+      updateData(data) {
+        this.data = { ...this.data, data };
+      }
+
+      get baseURL() {
+        return `http://${this.host}/api/`;
+      }
+
+      get defaultFetchParams() {
+        return {
+          headers: {
+            Authorization:
+              "Basic " +
+              btoa(`${this.credentials.username}:${this.credentials.password}`),
+          },
+        };
+      }
+
+      async get(endpoint = "") {
+        let response;
+        try {
+          response = await fetch(
+            this.baseURL + endpoint,
+            this.defaultFetchParams
+          );
+        } catch {
+          throw new Errors.DeviceOffline();
+        }
+
+        if (response.status == 401) throw new Errors.AuthenticationError();
+
+        try {
+          return await response.json();
+        } catch {
+          throw new Errors.NotJSON();
+        }
+      }
+
+      async post(endPoint = "", data = {}) {
+        let response;
+        try {
+          response = await fetch(this.baseURL + endpoint, {
+            ...this.defaultFetchParams,
+            method: "post",
+            data,
+          });
+        } catch {
+          throw new Errors.DeviceOffline();
+        }
+
+        if (response.status == 401) throw new Errors.AuthenticationError();
+
+        try {
+          return await response.json();
+        } catch {
+          throw new Errors.NotJSON();
+        }
+      }
+    }
+  </script>
 </html>
