@@ -249,7 +249,7 @@
       <span class="title">Scientia Signage</span>
     </nav>
 
-    <div id="body">
+    <div id="body" class="no-select">
       <div class="devices"></div>
     </div>
 
@@ -303,6 +303,10 @@
       content: "Status: ";
     }
 
+    .device.offline .playing {
+      display: none;
+    }
+
     .device .playing:before {
       color: initial;
       content: "Playing: ";
@@ -337,6 +341,10 @@
       width: 90%;
       height: auto;
       margin: 0 auto;
+    }
+
+    .device.offline .controlContainer {
+      display: none;
     }
 
     .device .controlContainer {
