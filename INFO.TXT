@@ -1,0 +1,1 @@
+`start.sh` is called inside `/home/pi/.config/lxsession/LXDE/autostart`
