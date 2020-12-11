@@ -278,7 +278,7 @@
       }
       footer:after {
         right: 0;
-        content: "Andrew Wong | 2019";
+        content: "Andrew Wong | 2019 - 2020";
       }
       footer a {
         color: black;
@@ -377,6 +377,26 @@
     }
     .device .container > *:not(:last-child) {
       border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .device .dragContainer {
+      position: relative;
+    }
+
+    .device .dragContainer .dragOverlay[visible] {
+      background-color: white;
+      outline: 2px dashed black;
+      outline-offset: -10px;
+
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+    }
+
+    .device .dragContainer .active {
+      background-color: rgb(220,225,230) !important
     }
 
     .device .previewContainer {
@@ -492,6 +512,7 @@
 
       let uploader = document.createElement("input");
       uploader.type = "file";
+      uploader.accept = "image/*"
       uploader.click();
       uploader.style.display = "none";
       uploader.addEventListener("change", async () => {
@@ -526,10 +547,58 @@
       playlist.innerText = "";
       container.appendChild(playlist);
 
+      var dragContainer = document.createElement('div')
+      dragContainer.className = 'dragContainer';
+
+      var dragOverlay = document.createElement('div')
+      dragOverlay.className = 'dragOverlay'
+      
+      const preventDefaults = (evt) => {
+        evt.preventDefault()
+        evt.stopPropagation()
+      }
+  
+      const highlightElem = (el, state) => {
+        if (state) {
+          el.classList.add('active')
+        } else {
+          el.classList.remove('active')
+        }
+      }
+
+      ;['dragenter', 'dragover'].forEach(evtName => {
+        dragOverlay.addEventListener(evtName, (event) => {
+          preventDefaults(event)
+          highlightElem(dragOverlay, true)
+        }, false)
+      }) 
+
+      ;['dragleave', 'drop'].forEach(evtName => {
+        dragOverlay.addEventListener(evtName, (event) => {
+          preventDefaults(event)
+          highlightElem(dragOverlay, false)
+        }, false)
+      }) 
+
+      dragOverlay.addEventListener('drop', (event) => {
+        preventDefaults(event)
+        showDrag(false)
+        let files = event.dataTransfer.files;
+        console.log(files);
+      }, false)
+      
+      
+      dragContainer.append(dragOverlay)
+
+      container.appendChild(dragContainer)
+
+      const browserDragCapability = ('draggable' in dragContainer) || ('ondragstart' in dragContainer && 'ondrop' in dragContainer)
+
+
       {
         var previewContainer = document.createElement("div");
         previewContainer.className = "previewContainer";
-        container.appendChild(previewContainer);
+        dragContainer.appendChild(previewContainer);
 
         var previewText = document.createElement("div");
         previewText.className = "previewText";
@@ -660,6 +729,7 @@
       })(statusLoop);
 
       element.forceUpdate = statusLoop;
+
       return element;
     }
 
@@ -667,5 +737,21 @@
     for (let device of devices) {
       body.appendChild(createDeviceElement(device));
     }
+
+    function showDrag(state) {
+      if (state) {
+        [...document.querySelectorAll('.dragOverlay')].forEach((d) => d.setAttribute('visible', true))
+      } else {
+        [...document.querySelectorAll('.dragOverlay')].forEach((d) => d.removeAttribute('visible'))
+      }
+    }
+
+    window.addEventListener('dragenter', () => {
+      showDrag(true)
+    }, false)
+
+    window.addEventListener('dragend', () => {
+      showDrag(false)
+    }, false)
   </script>
 </html>
