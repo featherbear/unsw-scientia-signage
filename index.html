@@ -518,6 +518,15 @@
       element.className = "device";
       element.classList.add("offline");
 
+      async function uploadAndShow(file) {
+        await device.uploadFile(file);
+        await device.setSingle(file.name);
+        await device.stopPlaying();
+        device.updateData({ _last_currentPlaylist: null });
+        await device.playSingle();
+        element.forceUpdate();
+      }
+
       let uploader = document.createElement("input");
       uploader.type = "file";
       uploader.accept = "image/*"
@@ -525,13 +534,7 @@
       uploader.style.display = "none";
       uploader.addEventListener("change", async () => {
         if (uploader.files) {
-          let file = uploader.files[0];
-          await device.uploadFile(file);
-          await device.setSingle(file.name);
-          await device.stopPlaying();
-          device.updateData({ _last_currentPlaylist: null });
-          await device.playSingle();
-          element.forceUpdate();
+          uploadAndShow(uploader.files[0]);
         }
       });
       element.appendChild(uploader);
@@ -591,8 +594,13 @@
       dragOverlay.addEventListener('drop', (event) => {
         preventDefaults(event)
         showDrag(false)
-        let files = event.dataTransfer.files;
-        console.log(files);
+        let file = event.dataTransfer.files[0];
+        if (!file) return
+        if (!file.type.startsWith('image/')) {
+          console.info(`Attempted to drag \`${file.name}\` but it has an invalid content type`)
+          return
+        }
+        uploadAndShow(file)
       }, false)
       
       
