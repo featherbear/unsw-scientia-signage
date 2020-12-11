@@ -536,6 +536,8 @@
   </style>
   <script>
     function createDeviceElement(device /* SignageDevice */) {
+      let onUpdate = null;
+
       let element = document.createElement("div");
       element.className = "device";
       element.classList.add("offline");
@@ -548,7 +550,7 @@
         device.updateData({ _last_currentPlaylist: null });
         await device.playSingle();
         element.forceUpdate();
-        element.classList.remove('loading')
+        onUpdate = () => element.classList.remove('loading')
       }
 
       let uploader = document.createElement("input");
@@ -727,6 +729,10 @@
             let file = await device.get(`files/${filename}`);
             let fileContent = await device.getMedia(filename);
             preview.setAttribute("src", URL.createObjectURL(fileContent));
+            if (onUpdate !== null) {
+              onUpdate();
+              onUpdate = null;
+            }
           }
         }
       };
