@@ -383,7 +383,7 @@
       position: relative;
     }
 
-    .device .dragContainer .dragOverlay[visible] {
+    .device.running .dragContainer .dragOverlay[visible] {
       background-color: white;
       outline: 2px dashed black;
       outline-offset: -10px;
@@ -393,6 +393,14 @@
       right: 0;
       bottom: 0;
       left: 0;
+    }
+
+    .device.running .dragContainer .dragOverlay[visible]::before {
+      content: 'Drop image to upload';
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
     .device .dragContainer .active {
