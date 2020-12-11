@@ -423,6 +423,16 @@
       padding: 5px 12px;
     }
 
+
+    .device:not(.loading) .previewContainer .loaderOverlay {
+      display: none;
+    }
+
+    .device .previewContainer .loaderOverlay {
+      position: absolute;
+      right: 3px;
+    }
+
     .device .previewContainer img {
       max-width: 220px;
       max-height: 130px;
@@ -511,6 +521,18 @@
     .device.error {
       background-color: #fbbdbd;
     }
+
+    .loader {
+      border: 16px solid #f3f3f3;
+      border-top: 16px solid #ffcc00;
+      border-radius: 50%;
+      animation: spin 2s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
   <script>
     function createDeviceElement(device /* SignageDevice */) {
@@ -519,12 +541,14 @@
       element.classList.add("offline");
 
       async function uploadAndShow(file) {
+        element.classList.add('loading')
         await device.uploadFile(file);
         await device.setSingle(file.name);
         await device.stopPlaying();
         device.updateData({ _last_currentPlaylist: null });
         await device.playSingle();
         element.forceUpdate();
+        element.classList.remove('loading')
       }
 
       let uploader = document.createElement("input");
@@ -620,6 +644,17 @@
         previewText.className = "previewText";
         previewText.innerText = "Preview";
         previewContainer.appendChild(previewText);
+
+        {
+          var loaderOverlay = document.createElement("div");
+          loaderOverlay.className = "loaderOverlay"
+          
+          var loader = document.createElement("div")
+          loader.className = "loader"
+          loaderOverlay.appendChild(loader)
+
+          previewContainer.appendChild(loaderOverlay)
+        }
 
         var preview = document.createElement("img");
         preview.className = "preview";
